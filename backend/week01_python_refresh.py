@@ -58,28 +58,28 @@ def can_enroll(student_id, course_code):
     course = find_course(course_code)
 
     if course is None:
-        return False, "Hoc phan khong ton tai"
+        return False, "Học phần không tồn tại"
     
     if course["enrolled"] >= course["capacity"]:
-        return False, "Lop da du so luong"
+        return False, "Lớp đã đủ số lượng"
     
     duplicated = any(
         item["student_id"] == student_id and item["course_code"] == course_code
         for item in enrollments
     )
     if duplicated:
-        return False, "Sinh vien da dang ky hoc phan nay"
+        return False, "Sinh viên đã đăng kí học phần này"
     
-    return True, "Co the dang ky"
+    return True, "Có thể đăng kí"
 
 print(can_enroll("22000002", "INT2204"))
 
 # Xử lý dữ liệu nhập sai
 try:
-    limit = int(input("Nhap so luong hoc phan muon hien thi: "))
+    limit = int(input("Nhập số lượng học phần muốn hiển thị: "))
     print(courses[:limit])
 except ValueError:
-    print("So luong phai la so nguyen")
+    print("Số lượng phải là số nguyên")
 
 # Hàm tìm kiếm học phần
 def search_courses(keyword):
@@ -116,12 +116,12 @@ def enroll_student(student_id, course_code):
 
 # 2. Kiểm tra chương trình
 if __name__ == "__main__":
-    print("\nTEST KẾT QUẢ HIỂN THỊ CHỖ TRỐNG")
+    print("\nKẾT QUẢ HIỂN THỊ CHỖ TRỐNG")
     for course in courses:
         remaining = course["capacity"] - course["enrolled"]
         print(course["code"], "con", remaining, "cho")
 
-    print("\nTEST BÀI TẬP TỰ LUYỆN (5 TÌNH HUỐNG)")
+    print("\n5 TÌNH HUỐNG")
 
     # Tình huống 1: Đăng ký thành công
     status, msg = enroll_student("22000002", "INT2204")
