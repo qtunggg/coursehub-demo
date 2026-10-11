@@ -242,3 +242,120 @@ def delete_enrollment(student_id: str, class_section_id: str) -> Response:
             )
         
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+@app.get("/lecturers", status_code=status.HTTP_200_OK)
+def get_lecturers():
+    query = text("SELECT id, name FROM lecturers ORDER BY id ASC;")
+    with engine.connect() as conn:
+        result = conn.execute(query).fetchall()
+        lecturers = [{"id": row.id, "name": row.name} for row in result]
+    return lecturers
+
+@app.get("/sections/{section_id}", status_code=status.HTTP_200_OK)
+def get_section_detail(section_id: str):
+    try:
+        with engine.connect() as conn:
+            # 1. Lấy danh sách tên tất cả các cột trong v_section_summary
+            cols_query = text("SELECT * FROM v_section_summary LIMIT 0;")
+            cols = conn.execute(cols_query).keys()
+            
+            # 2. Tìm cột chứa mã lớp (thường chứa chữ 'code', 'section', hoặc là cột đầu tiên)
+            target_col = None
+            for col in cols:
+                if any(k in col.lower() for k in ['section', 'code', 'class']):
+                    target_col = col
+                    break
+            if not target_col:
+                target_col = list(cols)[0]
+
+            # 3. Truy vấn chuẩn theo cột tìm được
+            sql = text(f"SELECT * FROM v_section_summary WHERE {target_col} = :sec_id;")
+            result = conn.execute(sql, {"sec_id": section_id}).mappings().fetchone()
+            
+            if not result:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"Lớp học phần '{section_id}' không tồn tại."
+                )
+                
+            return dict(result)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
+
+from pydantic import BaseModel, Field
+
+class CapacityUpdate(BaseModel):
+    capacity: int = Field(..., gt=0, description="Capacity phai lon hon 0")
+@app.patch("/sections/{section_id}/capacity", status_code=status.HTTP_200_OK)
+def update_section_capacity(section_id: str, body: CapacityUpdate):
+    new_capacity = body.capacity
+    
+    with engine.begin() as conn:
+        # 1. Kiểm tra lớp học phần có tồn tại không
+        sec = conn.execute(
+            text("SELECT capacity FROM class_sections WHERE id = :id"), 
+            {"id": section_id}
+        ).fetchone()
+        
+        if not sec:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, 
+                detail=f"Lớp học phần '{section_id}' không tồn tại."
+            )
+            
+        # 2. Đếm số sinh viên đã đăng ký
+        enrolled_count = conn.execute(
+            text("SELECT COUNT(*) FROM enrollments WHERE class_section_id = :id"), 
+            {"id": section_id}
+        ).scalar() or 0
+        
+        # 3. Kiểm tra điều kiện: sức chứa mới không được nhỏ hơn số đã đăng ký
+        if new_capacity < enrolled_count:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"Sức chứa mới ({new_capacity}) nhỏ hơn số sinh viên đã đăng ký ({enrolled_count})."
+            )
+            
+        # 4. Cập nhật sức chứa
+        conn.execute(
+            text("UPDATE class_sections SET capacity = :cap WHERE id = :id"), 
+            {"cap": new_capacity, "id": section_id}
+        )
+        
+    return {
+        "message": "Cập nhật sức chứa thành công",
+        "section_id": section_id,
+        "capacity": new_capacity
+    }
+
+@app.get("/courses", status_code=status.HTTP_200_OK)
+def get_courses(
+    q: str = Query(None),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(10, ge=1, le=100)
+):
+    base_sql = "FROM courses"
+    params = {}
+    
+    if q:
+        base_sql += " WHERE name ILIKE :query OR code ILIKE :query"
+        params["query"] = f"%{q}%"
+        
+    sql = text(f"SELECT code, name, credits {base_sql} ORDER BY code ASC;")
+    
+    with engine.connect() as conn:
+        result = conn.execute(sql, params).mappings().fetchall()
+        
+    courses = [dict(row) for row in result]
+    
+    # Ép kiểu số nguyên và cắt danh sách bắt buộc
+    start = int(skip)
+    end = start + int(limit)
+    
+    return courses[start:end]
