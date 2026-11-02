@@ -7,3 +7,6 @@
 - Performance data: 100000 rows, dataset=performance.
 - Index: idx_enrollment_events_dataset_student_time.
 - Scan type truoc/sau: Seq Scan -> Index Scan.
+
+- Index Bai 3: idx_enrollment_events_section_type_time (class_section_id, event_type, occurred_at DESC).
+- Scan type Bai 3: Seq Scan -> Index Scan.

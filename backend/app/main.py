@@ -397,3 +397,78 @@ def delete_enrollment(student_id: str, class_section_id: str) -> Response:
         connection.execute(text(event_sql), parameters)
 
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+# ==========================================
+# BÀI TẬP TỰ THỰC HÀNH - BÀI 1: API ĐỌC LỊCH SỬ ĐĂNG KÝ
+# ==========================================
+
+@app.get("/enrollment-events", status_code=status.HTTP_200_OK)
+def list_enrollment_events(
+    student_id: str | None = Query(default=None),
+    event_type: str | None = Query(default=None),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(10, ge=1, le=100),
+) -> list[dict[str, Any]]:
+    sql = """
+        SELECT id, student_id, class_section_id, event_type, source, dataset, occurred_at
+        FROM enrollment_events
+        WHERE 1=1
+    """
+    parameters: dict[str, Any] = {}
+
+    if student_id:
+        sql += " AND student_id = :student_id"
+        parameters["student_id"] = student_id
+
+    if event_type:
+        sql += " AND event_type = :event_type"
+        parameters["event_type"] = event_type.upper()
+
+    sql += " ORDER BY occurred_at DESC, id DESC LIMIT :limit OFFSET :skip"
+    parameters["limit"] = limit
+    parameters["skip"] = skip
+
+    with engine.connect() as connection:
+        rows = connection.execute(text(sql), parameters).mappings().all()
+
+    return [dict(row) for row in rows]
+
+
+# ==========================================
+# BÀI TẬP TỰ THỰC HÀNH - BÀI 2: KIỂM THỬ ROLLBACK NHIỀU BẢNG
+# ==========================================
+
+@app.post("/test-rollback-demo", status_code=status.HTTP_201_CREATED)
+def test_rollback_demo(payload: EnrollmentCreate) -> dict[str, str]:
+    insert_enrollment_sql = """
+        INSERT INTO enrollments (student_id, class_section_id)
+        VALUES (:student_id, :class_section_id)
+    """
+    # Cố ý chèn event_type sai quy định ('INVALID_TYPE') để làm hỏng Transaction ở bước 2
+    invalid_event_sql = """
+        INSERT INTO enrollment_events
+            (student_id, class_section_id, event_type, source, dataset)
+        VALUES
+            (:student_id, :class_section_id, 'INVALID_TYPE', 'api', 'demo')
+    """
+    parameters = {
+        "student_id": payload.student_id,
+        "class_section_id": payload.class_section_id,
+    }
+
+    try:
+        with engine.begin() as connection:
+            # Bước 1: Thêm vào enrollments (tạm thời thành công trong transaction)
+            connection.execute(text(insert_enrollment_sql), parameters)
+            
+            # Bước 2: Thêm vào enrollment_events (bị ném ngoại lệ do sai event_type)
+            connection.execute(text(invalid_event_sql), parameters)
+    except SQLAlchemyError as exc:
+        # Nhờ khối 'with engine.begin()', exception ở Bước 2 sẽ tự động ROLLBACK Bước 1
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Transaction bi Rollback do loi chèn Audit Log!",
+        ) from exc
+
+    return {"message": "Thanh cong"}
