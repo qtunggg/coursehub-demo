@@ -9,19 +9,20 @@ from sqlalchemy import URL, create_engine
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 load_dotenv(BACKEND_DIR / ".env")
 
-required_names = ["DB_HOST", "DB_PORT", "DB_NAME", "DB_USER", "DB_PASSWORD"]
-missing = [name for name in required_names if not os.getenv(name)]
-if missing:
-    missing_text = ", ".join(missing)
-    raise RuntimeError(f"Thieu bien moi truong: {missing_text}")
+# Tự động lấy giá trị từ .env, nếu thiếu sẽ dùng giá trị mặc định của project
+db_user = os.getenv("DB_USER", "coursehub_user")
+db_password = os.getenv("DB_PASSWORD", "coursehub_password")
+db_host = os.getenv("DB_HOST", "localhost")
+db_port = int(os.getenv("DB_PORT", "5432"))
+db_name = os.getenv("DB_NAME", "coursehub")
 
 database_url = URL.create(
     drivername="postgresql+psycopg",
-    username=os.environ["DB_USER"],
-    password=os.environ["DB_PASSWORD"],
-    host=os.environ["DB_HOST"],
-    port=int(os.environ["DB_PORT"]),
-    database=os.environ["DB_NAME"],
+    username=db_user,
+    password=db_password,
+    host=db_host,
+    port=db_port,
+    database=db_name,
 )
 
 engine = create_engine(database_url, pool_pre_ping=True)
