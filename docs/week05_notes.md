@@ -1,0 +1,2 @@
+## 1. Bản phác giao diện (Figma / Wireframe)
+- **Link thiết kế Figma:** [CourseHub Figma Design]https://www.figma.com/design/2JOSz9YHBPU8b7xDlV7oR2/CourseHub---Bu%E1%BB%95i-5?node-id=1-2&t=kxbopTMWJTpYYeIp-1
