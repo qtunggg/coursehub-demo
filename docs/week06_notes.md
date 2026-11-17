@@ -9,12 +9,12 @@
 - pytest backend/tests -q: 3 passed
 - npm test: 8/8 pass
 - npm run build: build thành công
-- docker compose up --build: chưa chạy
+- docker compose up --build:
 
 ## Một luồng tích hợp đã kiểm tra
-- Request: POST /api/enrollments (22000004, WEB-01), sau đó DELETE /api/enrollments/22000004/WEB-01
-- HTTP status: chưa chạy
-- SQL xác nhận: chưa chạy
+- Request:
+- HTTP status:
+- SQL xác nhận:
 
 ## Debug / AI
 - Lỗi gặp phải: lúc chạy pytest thì nó lấy luôn file week04_concurrency_test.py (vì tên có đuôi _test.py), file này gọi server thật nên lên CI sẽ bị đỏ.
