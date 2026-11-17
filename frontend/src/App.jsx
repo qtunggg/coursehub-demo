@@ -91,6 +91,7 @@ export default function App() {
     } catch (err) {
       setNotice({ kind: "error", text: err.message });
     } finally {
+      // Đọc lại CSDL kể cả sau lỗi; không tự cộng/trừ số chỗ ở giao diện.
       setLoading(true);
       setRefresh((value) => value + 1);
       setBusy(false);
@@ -102,7 +103,7 @@ export default function App() {
     .map((section) => ({
       ...section,
       course_name:
-        courses.find((course) => course.course_code === section.course_code)
+        courses.find((course) => course.code === section.course_code)
           ?.name ?? section.course_code,
       registered: enrollments.some(
         (item) => item.class_section_id === section.class_id
@@ -121,10 +122,10 @@ export default function App() {
   return (
     <main className="container">
       <header className="hero">
-        <p className="eyebrow">CSDL WEB VÀ HỆ THỐNG THÔNG TIN BUỔI 5</p>
+        <p className="eyebrow">CSDL WEB VÀ HỆ THỐNG THÔNG TIN · BUỔI 5</p>
         <h1>CourseHub</h1>
         <p>Tra cứu và đăng ký lớp học phần</p>
-        <span className="chip">React - FastAPI - PostgreSQL</span>
+        <span className="chip">React → FastAPI → PostgreSQL</span>
       </header>
 
       <p className="demo-note">
@@ -150,19 +151,19 @@ export default function App() {
           <button
             type="button"
             className="secondary"
-            disabled={busy}
+            disabled={busy || loading}
             onClick={() => setRefresh((value) => value + 1)}
           >
             Tải lại dữ liệu
           </button>
         </form>
         <p className="muted">
-          Dữ liệu đang xem: <strong>{studentId}</strong>. Mã mẫu: 22000001-22000004.
+          Dữ liệu đang xem: <strong>{studentId}</strong>. Mã mẫu: 22000001–22000004.
         </p>
       </section>
 
       <Notice kind={notice.kind}>{notice.text}</Notice>
-      {error && <Notice kind="error">{error}</Notice>}
+      <Notice kind="error">{error}</Notice>
       {loading && <Notice>Đang tải dữ liệu từ API...</Notice>}
 
       {!loading && !error && (
@@ -196,7 +197,7 @@ export default function App() {
           <section className="panel">
             <h2>3. Lớp đã đăng ký</h2>
             <p className="muted">
-              Sinh viên {studentId}: {enrollments.length} lớp
+              Sinh viên {studentId} · {enrollments.length} lớp
             </p>
             <EnrollmentList
               rows={enrollments}
